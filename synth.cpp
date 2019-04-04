@@ -22,7 +22,7 @@ struct MIDIContext {
 	snd_seq_t* seq;
 
 	MIDIContext() {
-		alsa_test_error(snd_seq_open(&seq, "default", SND_SEQ_OPEN_DUPLEX, 0));		
+		alsa_test_error(snd_seq_open(&seq, "default", SND_SEQ_OPEN_DUPLEX, 0));
 		// TODO, make work.
 	}
 };
@@ -46,14 +46,16 @@ struct PCMContext {
 		alsa_test_error(snd_pcm_hw_params_set_rate_near(handle, params,  &this->sample_rate, &dir));
 		alsa_test_error(snd_pcm_hw_params_set_period_size_near(handle, params, &this->frames_per_window, &dir));
 		alsa_test_error(snd_pcm_hw_params(handle, params));
+		// Do these do what I think they do?
+		// Augh, I don't understand ALSA.
+		alsa_test_error(snd_pcm_hw_params_get_rate(params, &this->sample_rate, &dir));
 		alsa_test_error(snd_pcm_hw_params_get_period_size(params, &this->frames_per_window, &dir));
-		alsa_test_error(snd_pcm_hw_params_get_period_time(params, &this->sample_rate, &dir));
 	}
 
 	void write(uint16_t* buffer) {
 		int rc = snd_pcm_writei(handle, buffer, frames_per_window);
 		if (rc == -EPIPE) {
-			std::cerr << "Underrun." << std::endl;
+//			std::cerr << "Underrun." << std::endl;
 			snd_pcm_prepare(handle);
 		} else if (rc < 0) {
 			std::cerr << "Error:" << snd_strerror(rc) << std::endl;
@@ -64,8 +66,9 @@ struct PCMContext {
 };
 
 int main(int argc, const char** argv) {
-	PCMContext pcm_ctx{48000, 32};
-	std::vector<uint16_t> samples(pcm_ctx.frames_per_window * 2);	
+	PCMContext pcm_ctx(48000, 32);
+	std::cout << "Sample rate: " << pcm_ctx.sample_rate << "   Frames per window: " << pcm_ctx.frames_per_window << std::endl;
+	std::vector<uint16_t> samples(pcm_ctx.frames_per_window * 2);
 	while (true) {
 		for (int i = 0; i < samples.size(); i++)
 			samples[i] = std::uniform_int_distribution<int>(-(2<<15), 2<<15)(rng);
